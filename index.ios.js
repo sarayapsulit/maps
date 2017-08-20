@@ -54,6 +54,17 @@ export default class maps extends Component {
     targetsList: [],
     targetsListCount: 0,
 
+
+
+    ghost1: {latitude: 40, longitude: -73},
+    target1: {lat: maxlat, lng: maxlong},
+    targetCount1: 0,
+    targets1: [],
+    targetsList1: [],
+    targetsListCount1: 0
+
+    
+
     };
 
   }
@@ -64,7 +75,9 @@ export default class maps extends Component {
     axios.get('https://roads.googleapis.com/v1/nearestRoads?points='+coords.join("|")+'&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
     .then((response)=>{
 
-      this.setState({snappedPoints: response.data.snappedPoints, ghost:  response.data.snappedPoints[0].location})
+      this.setState({snappedPoints: response.data.snappedPoints, ghost:  response.data.snappedPoints[0].location, ghost1:  response.data.snappedPoints[1].location})
+
+      // FOR GHOST
 
       let index = Math.floor((Math.random()*this.state.snappedPoints.length) + 1 )
       let {latitude, longitude} = this.state.snappedPoints[index].location
@@ -74,6 +87,7 @@ export default class maps extends Component {
          n === index || n ===0 ?  n = n + 1 : n
          wayPoints.push( (this.state.snappedPoints[n].location.latitude+","+this.state.snappedPoints[n].location.longitude) );
       }
+        console.log('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.ghost.latitude+','+this.state.ghost.longitude+'&destination='+latitude+','+longitude+'&waypoints='+wayPoints.join("|")+'&mode=walking&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
       axios.get('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.ghost.latitude+','+this.state.ghost.longitude+'&destination='+latitude+','+longitude+'&waypoints='+wayPoints.join("|")+'&mode=walking&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
       .then((response)=> {
         let targets = [];
@@ -89,6 +103,35 @@ export default class maps extends Component {
         this.setState({target: this.state.targets[0]})
           }
         )
+
+        // FOR GHOST 1
+        let index1 = Math.floor((Math.random()*this.state.snappedPoints.length) + 1 )
+        let latitude1 = this.state.snappedPoints[index1].location.latitude
+        let longitude1 = this.state.snappedPoints[index1].location.longitude
+        let wayPoints1 = []
+        for (var p = 0; p < 20; p++) {
+          let n = Math.floor((Math.random()*this.state.snappedPoints.length) + 1 )
+           n === index || n ===0 ?  n = n + 1 : n
+           wayPoints1.push( this.state.snappedPoints[n].location.latitude+","+this.state.snappedPoints[n].location.longitude);
+        }
+
+        console.log('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.ghost1.latitude+','+this.state.ghost1.longitude+'&destination='+latitude1+','+longitude1+'&waypoints='+wayPoints1.join("|")+'&mode=walking&key=AIzaSyDH8pumtaPVjLxFfRAotmwHom3wL9otDso')
+
+        axios.get('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.ghost1.latitude+','+this.state.ghost1.longitude+'&destination='+latitude1+','+longitude1+'&waypoints='+wayPoints1.join("|")+'&mode=walking&key=AIzaSyDH8pumtaPVjLxFfRAotmwHom3wL9otDso')
+        .then((response)=> {
+          let targets1 = [];
+          response.data.routes[0].legs.forEach(function (leg) {
+            leg.steps.forEach(function(step){
+              targets1.push(step.end_location)
+                }
+              )
+            }
+          )
+
+          this.setState({targets1: targets1})
+          this.setState({target1: this.state.targets1[0]})
+            }
+          )
 
       }
     )
@@ -113,25 +156,50 @@ export default class maps extends Component {
     this.setState({ghost: {latitude:  newLatitude, longitude: newLongitude }})
   }
 
+
   changeTarget = () => {
     let targetCount = this.state.targetCount + 1
     this.setState({targetCount: targetCount })
     this.setState({target: this.state.targets[targetCount] })
   }
-
   moveGhost = () =>{
     let {latitude, longitude} = this.state.ghost ? this.state.ghost : {};
     let {lat, lng} = this.state.target ? this.state.target : {};
     Math.abs(longitude - lng) < 0.00008 ? this.changeTarget() : this.changeCoords()
   }
 
+  changeCoordsforGhost1 = ()=>{
+
+    let {latitude, longitude} = this.state.ghost1 ? this.state.ghost1 : {};
+    let {lat, lng} = this.state.target1 ? this.state.target1 : {};
+
+    let factor;
+    latitude > lat ? factor = -1 : factor = 1;
+
+    let newLatitude1 = latitude + (0.00005 * factor);
+    let newLongitude1 = this.findLongitude(newLatitude1, latitude, longitude, lat, lng)
+
+    this.setState({ghost1: {latitude:  newLatitude1, longitude: newLongitude1 }})
+
+  }
+  changeTargetforGhost1 = () => {
+    let targetCount = this.state.targetCount1 + 1
+    this.setState({targetCount1: targetCount })
+    this.setState({target1: this.state.targets1[targetCount] })
+
+  }
+  moveGhost1 = () =>{
+    let {latitude, longitude} = this.state.ghost1 ? this.state.ghost1 : {};
+    let {lat, lng} = this.state.target1 ? this.state.target1 : {};
+    Math.abs(longitude - lng) < 0.00008 ? this.changeTargetforGhost1() : this.changeCoordsforGhost1()
+
+  }
 
   componentDidMount(){
 
+  setInterval(this.moveGhost, 500);
+  setInterval(this.moveGhost1, 600);
 
-
-
-  // setInterval(this.moveGhost, 500);
 
   }
 
@@ -154,6 +222,7 @@ export default class maps extends Component {
                     return <MapView.Marker key={i} coordinate={coord.location} image={require('./yellow.png')}  />
                   })}
                   <MapView.Marker coordinate={this.state.ghost} image={require('./ghost.png')} />
+                  <MapView.Marker coordinate={this.state.ghost1} image={require('./ghost1.png')} />
             </MapView>
           </View>
         </View>
