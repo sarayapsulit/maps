@@ -17,10 +17,10 @@ import axios from 'react-native-axios'
 
 
 
-let lat =  40.706549;
-let long = -74.009032;
-let latd = 0.0070;
-let longd = 0.0071;
+let lat =  40.759057;
+let long =  -73.978438;
+let latd = 0.010;
+let longd = 0.01;
 
 const getMin = (mid, delta) => {
    return( ( (mid * 2) - delta ) / 2 );
@@ -36,7 +36,7 @@ var minlong = getMin(long, longd);
 var maxlong = getMax(minlong, longd);
 
 let coords = []
-let key = AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8
+
 for (var i = 0; i < 100; i++) {
  coords.push(((Math.random()* latd) + minlat)+","+((Math.random()* longd) + minlong) );
 }
@@ -46,30 +46,52 @@ export default class maps extends Component {
   constructor() {
     super();
     this.state = {
-    points: [],
-    ghost: {latitude: 0, longitude: 0},
+    snappedPoints: [],
+    ghost: {latitude: 40, longitude: -73},
+    target: {lat: maxlat, lng: maxlong},
+    targetCount: 0,
     targets: [],
-    target: {lat: 0, long: 0}
+    targetsList: [],
+    targetsListCount: 0,
+
     };
 
   }
 
+
   componentWillMount(){
-    axios.get('https://roads.googleapis.com/v1/nearestRoads?points='+coords.join("|")+'&key='key)
+
+    axios.get('https://roads.googleapis.com/v1/nearestRoads?points='+coords.join("|")+'&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
     .then((response)=>{
-      this.setState({points: response.data.snappedPoints, ghost:  response.data.snappedPoints[0].location})
+
+      this.setState({snappedPoints: response.data.snappedPoints, ghost:  response.data.snappedPoints[0].location})
+
+      let index = Math.floor((Math.random()*this.state.snappedPoints.length) + 1 )
+      let {latitude, longitude} = this.state.snappedPoints[index].location
+      let wayPoints = []
+      for (var i = 0; i < 20; i++) {
+        let n = Math.floor((Math.random()*this.state.snappedPoints.length) + 1 )
+         n === index || n ===0 ?  n = n + 1 : n
+         wayPoints.push( (this.state.snappedPoints[n].location.latitude+","+this.state.snappedPoints[n].location.longitude) );
+      }
+      axios.get('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.ghost.latitude+','+this.state.ghost.longitude+'&destination='+latitude+','+longitude+'&waypoints='+wayPoints.join("|")+'&mode=walking&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
+      .then((response)=> {
+        let targets = [];
+        response.data.routes[0].legs.forEach(function (leg) {
+          leg.steps.forEach(function(step){
+            targets.push(step.end_location)
+              }
+            )
+          }
+        )
+
+        this.setState({targets: targets})
+        this.setState({target: this.state.targets[0]})
+          }
+        )
+
       }
     )
-    let i = Math.floor((Math.random()*this.state.points.length) + 1 )
-    let {latitude, longitude} = i < this.state.points.length ? this.state.points[i] : {}
-    // axios.get('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.ghost.latitude,this.state.longitude+'&destination='+latitude,longitude+'&mode=walking&key='key)
-    .then((response)=> {
-      this.setState({targets: response.data.routes.legs.steps})
-    }
-    )
-
-    this.setState({target: this.state.targets[0].end_location})
-    this.setState({ghost: {latitude: 40.742910, longitude: -73.992784}})
   }
 
   findLongitude = (newLat, xa, ya, xb, yb ) => {
@@ -77,24 +99,41 @@ export default class maps extends Component {
     return (slope * (newLat- xa)) + ya
   }
 
- changeCoords = ()=>{
-    let {lat, long} = this.state.target ? this.state.target : {};
+  changeCoords = ()=>{
+
     let {latitude, longitude} = this.state.ghost ? this.state.ghost : {};
+    let {lat, lng} = this.state.target ? this.state.target : {};
+
     let factor;
     latitude > lat ? factor = -1 : factor = 1;
 
-    let newLatitude = latitude + (0.0001* factor);
-    let newLongitude = this.findLongitude(newLatitude, latitude, longitude, lat, long)
+    let newLatitude = latitude + (0.00005 * factor);
+    let newLongitude = this.findLongitude(newLatitude, latitude, longitude, lat, lng)
 
     this.setState({ghost: {latitude:  newLatitude, longitude: newLongitude }})
-
-
   }
 
-componentDidMount(){
-   if this.state.ghost === this.state.target
-      setInterval(this.changeCoords, 1000)
-}
+  changeTarget = () => {
+    let targetCount = this.state.targetCount + 1
+    this.setState({targetCount: targetCount })
+    this.setState({target: this.state.targets[targetCount] })
+  }
+
+  moveGhost = () =>{
+    let {latitude, longitude} = this.state.ghost ? this.state.ghost : {};
+    let {lat, lng} = this.state.target ? this.state.target : {};
+    Math.abs(longitude - lng) < 0.00008 ? this.changeTarget() : this.changeCoords()
+  }
+
+
+  componentDidMount(){
+
+
+
+
+  // setInterval(this.moveGhost, 500);
+
+  }
 
   render() {
     let {latitude, longitude} = this.state.ghost ? this.state.ghost : {};
@@ -111,16 +150,16 @@ componentDidMount(){
                   latitudeDelta: latd,
                   longitudeDelta: longd,
                 }}>
-                  {this.state.points.map((coord, i) => {
+                  {this.state.snappedPoints.map((coord, i) => {
                     return <MapView.Marker key={i} coordinate={coord.location} image={require('./yellow.png')}  />
                   })}
                   <MapView.Marker coordinate={this.state.ghost} image={require('./ghost.png')} />
             </MapView>
           </View>
         </View>
-    );
+      );
+    }
   }
-}
 
 const styles = StyleSheet.create({
   container: {
