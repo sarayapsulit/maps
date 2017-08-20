@@ -12,7 +12,8 @@ import {
   View
 } from 'react-native';
 import MapView from 'react-native-maps';
-import axios from 'react-native-axios'
+import axios from 'react-native-axios';
+import Ghost from './ghost.ios.js'
 
 
 
@@ -47,23 +48,10 @@ export default class maps extends Component {
     super();
     this.state = {
     snappedPoints: [],
-    ghost: {latitude: 40, longitude: -73},
-    target: {lat: maxlat, lng: maxlong},
-    targetCount: 0,
-    targets: [],
-    targetsList: [],
-    targetsListCount: 0,
+
+    origins:[]
 
 
-
-    ghost1: {latitude: 40, longitude: -73},
-    target1: {lat: maxlat, lng: maxlong},
-    targetCount1: 0,
-    targets1: [],
-    targetsList1: [],
-    targetsListCount1: 0
-
-    
 
     };
 
@@ -75,7 +63,7 @@ export default class maps extends Component {
     axios.get('https://roads.googleapis.com/v1/nearestRoads?points='+coords.join("|")+'&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
     .then((response)=>{
 
-      this.setState({snappedPoints: response.data.snappedPoints, ghost:  response.data.snappedPoints[0].location, ghost1:  response.data.snappedPoints[1].location})
+      this.setState({snappedPoints: response.data.snappedPoints, origins:  response.data.snappedPoints.slice(0,), ghost1:  response.data.snappedPoints[1].location})
 
       // FOR GHOST
 
@@ -168,32 +156,6 @@ export default class maps extends Component {
     Math.abs(longitude - lng) < 0.00008 ? this.changeTarget() : this.changeCoords()
   }
 
-  changeCoordsforGhost1 = ()=>{
-
-    let {latitude, longitude} = this.state.ghost1 ? this.state.ghost1 : {};
-    let {lat, lng} = this.state.target1 ? this.state.target1 : {};
-
-    let factor;
-    latitude > lat ? factor = -1 : factor = 1;
-
-    let newLatitude1 = latitude + (0.00005 * factor);
-    let newLongitude1 = this.findLongitude(newLatitude1, latitude, longitude, lat, lng)
-
-    this.setState({ghost1: {latitude:  newLatitude1, longitude: newLongitude1 }})
-
-  }
-  changeTargetforGhost1 = () => {
-    let targetCount = this.state.targetCount1 + 1
-    this.setState({targetCount1: targetCount })
-    this.setState({target1: this.state.targets1[targetCount] })
-
-  }
-  moveGhost1 = () =>{
-    let {latitude, longitude} = this.state.ghost1 ? this.state.ghost1 : {};
-    let {lat, lng} = this.state.target1 ? this.state.target1 : {};
-    Math.abs(longitude - lng) < 0.00008 ? this.changeTargetforGhost1() : this.changeCoordsforGhost1()
-
-  }
 
   componentDidMount(){
 
@@ -220,6 +182,10 @@ export default class maps extends Component {
                 }}>
                   {this.state.snappedPoints.map((coord, i) => {
                     return <MapView.Marker key={i} coordinate={coord.location} image={require('./yellow.png')}  />
+                  })}
+
+                  {this.state.ghosts.map((coord, i) => {
+                    return <Ghost key={i} coordinate={coord.location} image={require('./yellow.png')}  />
                   })}
                   <MapView.Marker coordinate={this.state.ghost} image={require('./ghost.png')} />
                   <MapView.Marker coordinate={this.state.ghost1} image={require('./ghost1.png')} />
