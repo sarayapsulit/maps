@@ -32,75 +32,73 @@ export default class Ghost extends Component {
   constructor() {
     super();
     this.state = {
-
-    location: {latitude: 40, longitude: -73},
-    target: {lat: maxlat, lng: maxlong},
-    targetCount: 0,
-    route: [],
+      location: {latitude: 40, longitude: -73},
+      target: {lat: maxlat, lng: maxlong},
+      targetCount: 0,
+      route: []
     };
+    this.waitingForAxiosCalls = this.waitingForAxiosCalls.bind(this)
+    this.moveGhost = this.moveGhost.bind(this);
+    this.changeTarget = this.changeTarget.bind(this);
+    this.changeCoords = this.changeCoords.bind(this)
   };
   componentWillMount(){
-      debugger
-
-    this.props.snappedPoints ? origin = this.props.snappedPoints[this.props.id] : origin = {latitude: 40, longitude: -73}
-    this.setState({location: origin })
-    let index = Math.floor((Math.random()*this.props.snappedPoints.length) + 1 )
-    let {location} = index < this.props.snappedPoints.length ? this.props.snappedPoints[index] :{}
-    let {latitude, longitude} = location ? location : {}
-
-    let wayPoints = []
-    for (var i = 0; i < 20; i++) {
-      let n = Math.floor((Math.random()*this.props.snappedPoints.length) + 1 )
-         n === index || n ===0 ?  n = n + 1 : n
-         wayPoints.push(
-           (this.props.snappedPoints[n].location.latitude+","+this.props.snappedPoints[n].location.longitude)
-         );
-       }
-    axios.get('https://maps.googleapis.com/maps/api/directions/json?origin='+this.state.location.latitude+','+this.state.location.longitude+'&destination='+latitude+','+longitude+'&waypoints='+wayPoints.join("|")+'&mode=walking&key=AIzaSyCEiZCzxSsSbW6iUj3DapE6f76XKCREKp8')
-    .then((response)=> {
-    let route = [];
-    debugger
-    response.data.routes[0].legs.forEach(function (leg) {
-      leg.steps.forEach(function(step){
-        route.push(step.end_location)
-            }
-          )
-        }
-      )
-
-    this.setState({route: route, target: route[0]})
-      }
-    )
+    this.setState({location: location, route: this.props.route})
+  console.log( "componentWillMount" )
   }
-  findLongitude = (newLat, xa, ya, xb, yb ) => {
+  findLongitude = ( newLat, xa, ya, xb, yb ) => {
     var slope = (yb-ya)/(xb-xa)
     return (slope * (newLat- xa)) + ya
   }
 
-  changeCoords = ()=>{
-    let {latitude, longitude} = this.state.location ? this.state.location : {};
+  changeCoords = ()=> {
+  console.log( "changeCoords" )
+    let {latitude, longitude} = this.state.location ? this.state.location :{};
     let {lat, lng} = this.state.target ? this.state.target : {};
     let factor;
     latitude > lat ? factor = -1 : factor = 1;
     let newLatitude = latitude + (0.00005 * factor);
-    let newLongitude = this.findLongitude(newLatitude, latitude, longitude, lat, lng)
+    let newLongitude = this.findLongitude( newLatitude, latitude, longitude, lat, lng  )
     this.setState({location: {latitude:  newLatitude, longitude: newLongitude }})
   }
 
   changeTarget = () => {
-    let targetCount = this.state.targetCount + 1
+
+    let route = this.props.route ? this.props.route : [{lat: maxlat, lng: maxlong}]
+    let targetCount;
+    route.length > 1 ? targetCount = this.state.targetCount + 1 : targetCount = 0
+
+    console.log('route[targetCount]',route[targetCount])
     this.setState({targetCount: targetCount })
-    this.setState({target: this.state.route[targetCount] })
+    this.setState({target: route[targetCount] })
   }
 
-  moveGhost = () =>{
+  moveGhost = () => {
+    console.log( "moveGhost" )
     let {latitude, longitude} = this.state.location ? this.state.location : {};
     let {lat, lng} = this.state.target ? this.state.target : {};
     Math.abs(longitude - lng) < 0.00008 ? this.changeTarget() : this.changeCoords()
   }
 
+  waitingForAxiosCalls = () => {
+  console.log( "waitingForAxiosCalls" )
+    if (this.props.route.length >  1 ) {
+      // this.state.targetCount === 0 ? this.setState({target: this.props.route[this.state.targetCount]}) :
+  console.log( "waitingForAxiosCalls- true" )
+       this.moveGhost()
+    }else{
+      this.setState({target: this.state.location})
+  console.log( "waitingForAxiosCalls - false" )
+    }
+
+  }
+
   componentDidMount(){
-    setInterval(this.moveGhost, 500);
+    let location = this.props.origin ? this.props.origin.location  :  {latitude: 40, longitude: -73}
+
+    this.setState({location: location, route: this.props.route})
+    console.log( "componentDidMount")
+    setInterval(this.waitingForAxiosCalls, 1000);
   }
 
   render(){
