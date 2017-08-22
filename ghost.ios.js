@@ -32,79 +32,65 @@ export default class Ghost extends Component {
   constructor() {
     super();
     this.state = {
-      location: {latitude: 40, longitude: -73},
-      target: {lat: maxlat, lng: maxlong},
+      location: {latitude: 0, longitude: 0},
+      target: {lat: 0, lng: 0},
       targetCount: 0,
       route: []
     };
-    this.waitingForAxiosCalls = this.waitingForAxiosCalls.bind(this)
+
     this.moveGhost = this.moveGhost.bind(this);
     this.changeTarget = this.changeTarget.bind(this);
     this.changeCoords = this.changeCoords.bind(this)
   };
-  componentWillMount(){
-    this.setState({location: location, route: this.props.route})
-  console.log( "componentWillMount" )
-  }
+
+
   findLongitude = ( newLat, xa, ya, xb, yb ) => {
     var slope = (yb-ya)/(xb-xa)
     return (slope * (newLat- xa)) + ya
   }
 
   changeCoords = ()=> {
-  console.log( "changeCoords" )
     let {latitude, longitude} = this.state.location ? this.state.location :{};
     let {lat, lng} = this.state.target ? this.state.target : {};
     let factor;
+
     latitude > lat ? factor = -1 : factor = 1;
-    let newLatitude = latitude + (0.00005 * factor);
+
+    let newLatitude = latitude + (0.00003 * factor);
     let newLongitude = this.findLongitude( newLatitude, latitude, longitude, lat, lng  )
+
     this.setState({location: {latitude:  newLatitude, longitude: newLongitude }})
   }
 
   changeTarget = () => {
+    let route = this.props.route ? this.props.route : []
+    let targetCount = this.props.route ? this.state.targetCount + 1 : 0
+    let target = this.props.route ? this.props.route[targetCount] : {lat: 0, lng: 0}
+    this.setState({targetCount: targetCount, target: target })
 
-    let route = this.props.route ? this.props.route : [{lat: maxlat, lng: maxlong}]
-    let targetCount;
-    route.length > 1 ? targetCount = this.state.targetCount + 1 : targetCount = 0
-
-    console.log('route[targetCount]',route[targetCount])
-    this.setState({targetCount: targetCount })
-    this.setState({target: route[targetCount] })
   }
 
   moveGhost = () => {
-    console.log( "moveGhost" )
     let {latitude, longitude} = this.state.location ? this.state.location : {};
     let {lat, lng} = this.state.target ? this.state.target : {};
-    Math.abs(longitude - lng) < 0.00008 ? this.changeTarget() : this.changeCoords()
+
+    Math.abs(longitude - lng) < 0.0001 ? this.changeTarget() : this.changeCoords()
   }
 
-  waitingForAxiosCalls = () => {
-  console.log( "waitingForAxiosCalls" )
-    if (this.props.route.length >  1 ) {
-      // this.state.targetCount === 0 ? this.setState({target: this.props.route[this.state.targetCount]}) :
-  console.log( "waitingForAxiosCalls- true" )
-       this.moveGhost()
-    }else{
-      this.setState({target: this.state.location})
-  console.log( "waitingForAxiosCalls - false" )
-    }
 
-  }
 
   componentDidMount(){
-    let location = this.props.origin ? this.props.origin.location  :  {latitude: 40, longitude: -73}
+    let {location} = this.props.origin ? this.props.origin  :  {latitude: 0, longitude: 0}
+    let route = this.props.route ? this.props.route : []
+    let target = this.props.route[0] ? this.props.route[0] : {lat: 0 , lng: 0}
 
-    this.setState({location: location, route: this.props.route})
-    console.log( "componentDidMount")
-    setInterval(this.waitingForAxiosCalls, 1000);
+    this.setState({location: location, route: route, target: target})
+    // setInterval(this.moveGhost, 1000);
   }
 
   render(){
-
     return (
-        <MapView.Marker coordinate={this.state.location} image={require('./assets/ghost1.png')} />
+        <MapView.Marker coordinate={this.state.location} image={require('./assets/ghost2.png')} />
       )
     }
   }
